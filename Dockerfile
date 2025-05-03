@@ -22,21 +22,13 @@ ADD src/extra_model_paths.yaml /
 WORKDIR /
 ADD src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json /
 RUN chmod +x /start.sh /restore_snapshot.sh
+RUN mkdir -p /runpod-volume
 ###############################################################################
 # Stage 1 ▸ models + custom-nodes (ayrı katmanlarda)
 ###############################################################################
 ARG HF_TOKEN
 ARG CIVI_TOKEN
 
-# --- Civitai modeli (özellikle önemli olanı önce indirelim) ---
-RUN mkdir -p /comfyui/models/diffusion_models && \
-    echo "Downloading fluxFillFP8_v10.safetensors from Civitai..." && \
-    curl -L --fail --retry 5 --retry-delay 5 \
-      -H "Authorization: Bearer ${CIVI_TOKEN}" \
-      -o /comfyui/models/diffusion_models/fluxFillFP8_v10.safetensors \
-      "https://civitai.com/api/download/models/1085456?type=Model&format=SafeTensor&size=full&fp=fp8" && \
-    [ -f "/comfyui/models/diffusion_models/fluxFillFP8_v10.safetensors" ] && \
-    echo "Successfully downloaded fluxFillFP8_v10.safetensors"
 
 # --- Civitai modeli (RedDream) ---
 RUN mkdir -p /comfyui/models/diffusion_models && \
@@ -69,16 +61,6 @@ RUN --mount=type=cache,target=/tmp/wget-cache \
       -O /comfyui/models/text_encoders/llama_3.1_8b_instruct_fp8_scaled.safetensors \
       "https://huggingface.co/Comfy-Org/HiDream-I1_ComfyUI/resolve/main/split_files/text_encoders/llama_3.1_8b_instruct_fp8_scaled.safetensors?download=true"
 
-# --- Orijinal text encoder dosyalarını da ekleyelim ---
-RUN --mount=type=cache,target=/tmp/wget-cache \
-    wget -c --retry-connrefused --waitretry=5 -t 5 \
-      --header="Authorization: Bearer ${HF_TOKEN}" \
-      -O /comfyui/models/text_encoders/clip_l.safetensors \
-      "https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/resolve/main/text_encoders/clip_l.safetensors?download=true" && \
-    wget -c --retry-connrefused --waitretry=5 -t 5 \
-      --header="Authorization: Bearer ${HF_TOKEN}" \
-      -O /comfyui/models/text_encoders/t5xxl_fp8_e4m3fn.safetensors \
-      "https://huggingface.co/Comfy-Org/stable-diffusion-3.5-fp8/resolve/main/text_encoders/t5xxl_fp8_e4m3fn.safetensors?download=true"
 
 # --- VAE - İstediğiniz formatla ---
 RUN --mount=type=cache,target=/tmp/wget-cache \
@@ -87,22 +69,6 @@ RUN --mount=type=cache,target=/tmp/wget-cache \
       --header="Authorization: Bearer ${HF_TOKEN}" \
       -O /comfyui/models/vae/ae.safetensors \
       "https://huggingface.co/Comfy-Org/HiDream-I1_ComfyUI/resolve/main/split_files/vae/ae.safetensors?download=true"
-
-# --- VAE - FLUX1 ---
-RUN --mount=type=cache,target=/tmp/wget-cache \
-    mkdir -p /comfyui/models/vae/FLUX1 && \
-    wget -c --retry-connrefused --waitretry=5 -t 5 \
-      --header="Authorization: Bearer ${HF_TOKEN}" \
-      -O /comfyui/models/vae/FLUX1/ae.safetensors \
-      "https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors?download=true"
-
-# --- LoRA ---
-RUN --mount=type=cache,target=/tmp/wget-cache \
-    mkdir -p /comfyui/models/loras && \
-    wget -c --retry-connrefused --waitretry=5 -t 5 \
-      --header="Authorization: Bearer ${HF_TOKEN}" \
-      -O /comfyui/models/loras/comfyui_portrait_lora64.safetensors \
-      "https://huggingface.co/ali-vilab/ACE_Plus/resolve/main/portrait/comfyui_portrait_lora64.safetensors?download=true"
 
 RUN mkdir -p /comfyui/models/loras && \
     echo "Downloading hidreamskinench.safetensors from Civitai..." && \
